@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KakoroPay — Operator Console (QDay Aevum)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="top-nav">
+      <div class="brand">
+        <div class="logo-badge">KP</div>
+        <div>
+          <h1>KakoroPay</h1>
+          <span class="subtext">EVM Agent Spend Policies • QDay Aevum Testnet</span>
+        </div>
+      </div>
+      <div class="nav-badges">
+        <div class="badge status-live">
+          <span class="dot"></span> Chain: 44005 (Aevum)
+        </div>
+        <div id="vault-status" class="badge badge-normal">Vault Active</div>
+        <button id="btn-pause-toggle" class="btn btn-warning">Pause Vault</button>
+      </div>
+    </header>
+
+    <main class="dashboard-grid">
+      <!-- Account Overview Panel -->
+      <section class="card overview-card">
+        <div class="card-header">
+          <h2>Smart Account Vault</h2>
+          <a id="explorer-link" href="#" target="_blank" class="link-ext">Blockscout ↗</a>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <label>tUSD8 Balance</label>
+            <div id="tusd8-balance" class="stat-value highlight">-- tUSD8</div>
+          </div>
+          <div class="stat-box">
+            <label>Gas Tank (QDAY)</label>
+            <div id="native-balance" class="stat-value">-- QDAY</div>
+          </div>
+          <div class="stat-box full-width">
+            <label>Contract Address</label>
+            <div id="account-address" class="stat-mono">0x...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Session Governance Panel -->
+      <section class="card governance-card">
+        <div class="card-header">
+          <h2>Session Key Governance</h2>
+          <span class="pill-info">Scoped Delegation</span>
+        </div>
+        <p class="section-desc">Instantly revoke compromised session keys without redeploying contracts.</p>
+        <div class="action-form">
+          <input type="text" id="target-session-key" placeholder="Enter session key address (0x...)" class="input-text">
+          <button id="btn-revoke" class="btn btn-danger">Instant Revoke</button>
+        </div>
+        <div id="revoke-result" class="result-msg"></div>
+      </section>
+
+      <!-- Live Audit Timeline -->
+      <section class="card audit-card full-span">
+        <div class="card-header">
+          <h2>Live Audit Timeline</h2>
+          <span class="badge badge-neutral"><span id="event-count">0</span> Events</span>
+        </div>
+        <div class="timeline-container" id="timeline">
+          <div class="empty-state">Listening for on-chain events via SSE...</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>KakoroPay Aevum Builder Challenge #1</span>
+      <span>•</span>
+      <a href="https://explorer-test.qday.info" target="_blank">QDay Explorer</a>
+      <span>•</span>
+      <a href="https://github.com" target="_blank">Documentation</a>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

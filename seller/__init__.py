@@ -1,0 +1,1 @@
+"""KakoroPay Seller Package."""
