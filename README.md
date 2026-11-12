@@ -67,19 +67,38 @@ sequenceDiagram
 Run the end-to-end integration demo showing identity generation, policy derivation, 402 negotiation, EIP-712 signing, relayer broadcast, and on-chain verification:
 
 ```bash
-# In the repository root:
+# In the repository root (runs offline simulation by default, or live if PRIVATE_KEY is set):
 python demo/run_demo.py
+
+# Explicit live broadcast to QDay Aevum Testnet:
+python demo/run_demo.py --live
+
+# Explicit offline local dev simulation:
+python demo/run_demo.py --offline
 ```
 
-### Running Test Suites
+### Deploying to QDay Aevum Testnet
 ```bash
-# 1. Solidity Smart Contract Tests (Foundry with Invariant Fuzzing)
-cd contracts
-forge test -vv
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Add funded PRIVATE_KEY in .env (get testnet tQDAY from https://faucet.qday.info)
+
+# 3. Deploy PayeeRegistry and KakoroAccount
+python scripts/deploy.py
+# -> Writes deployed addresses to deployments/44005.json
+```
+
+### Running Test Suites & Evaluation Harness
+```bash
+# 1. Policy Benchmark & Outlier Evaluation Harness
+python -m kakoro_policy.eval_harness
 
 # 2. Python Ecosystem Tests (SDK, Relayer, Seller, Payer, MCP, Policy, Console, E2E)
-cd ..
 pytest -v
+
+# 3. Solidity Smart Contract Tests (Foundry with Invariant Fuzzing)
+cd contracts && forge test -vv && cd ..
 ```
 
 ---
@@ -96,7 +115,7 @@ KakoroPay-Aevum/
 │   └── test/
 │       ├── KakoroAccount.t.sol           # 19 Unit and Fuzz test cases
 │       └── KakoroAccountInvariant.t.sol  # Invariant testing (12,800 fuzzed calls)
-├── sdk/                     # kakoro-sdk: Python Client Library
+├── sdk/                     # kakoro-sdk: Python Client Library (pip-installable)
 │   ├── kakoro_sdk/
 │   │   ├── client.py        # Autonomous agent payment client with 402 retry
 │   │   ├── signer.py        # EIP-712 typed data hashing and ECDSA signing
@@ -104,6 +123,18 @@ KakoroPay-Aevum/
 │   │   ├── verifier.py      # On-chain ReceiptVerifier for merchants
 │   │   └── types.py         # Pydantic data models (PaymentIntent, PaymentProof)
 │   └── tests/test_sdk.py
+├── template/                # Quickstart agent payment scaffold template
+│   ├── agent_pay.py         # Autonomous paying agent boilerplate
+│   ├── requirements.txt
+│   └── README.md
+├── docs/                    # Technical & Competition Documentation
+│   ├── CHAIN_FACTS.md       # QDay Aevum Testnet RPC & token reconnaissance
+│   ├── PORT_MAP.md          # Soroban to EVM mapping architecture
+│   └── PITCH.md             # 3-minute pitch deck outline & live demo script
+├── scripts/                 # Utility & Deployment Scripts
+│   ├── chain_recon.py       # Live RPC probe against chain 44005
+│   └── deploy.py            # Native Python contract deployer & registry writer
+├── deployments/             # On-chain deployment records (44005.json)
 ├── relayer/                 # Gasless Transaction Relayer Service
 │   ├── src/relayer.py       # FastAPI relayer service with /api/simulate & /api/relay
 │   └── tests/test_relayer.py
@@ -113,6 +144,23 @@ KakoroPay-Aevum/
 ├── payer/                   # Isolated Signer Service
 │   ├── src/payer.py         # Standalone service protecting session keys
 │   └── tests/test_payer.py
+├── mcp-server/              # Model Context Protocol (MCP) Server for LLMs
+│   ├── src/kakoro_mcp/server.py # FastMCP server (discover_resources, check_budget, pay_and_call)
+│   └── tests/test_mcp.py
+├── policy-generator/        # Data-Derived Heuristic Policy Generator
+│   ├── src/kakoro_policy/
+│   │   ├── generator.py     # Percentile scoring, outlier filtering, explain(), calldata
+│   │   ├── eval_harness.py  # FBR/ABR attack replay benchmark harness
+│   │   └── schema.py        # SessionPolicySpec model
+│   └── tests/test_policy.py
+├── console/                 # Operator Management Console
+│   ├── src/server.py        # FastAPI console server with WebSockets/SSE
+│   ├── src/static/          # Vanilla JS / CSS dark-mode dashboard
+│   └── tests/test_console.py
+└── demo/                    # End-to-End Orchestrator & Integration
+    ├── run_demo.py          # Comprehensive live demonstration (live/offline modes)
+    └── tests/test_e2e_flow.py
+```
 ├── mcp-server/              # Model Context Protocol (MCP) Server for LLMs
 │   ├── src/kakoro_mcp/server.py # FastMCP server (discover_resources, check_budget, pay_and_call)
 │   └── tests/test_mcp.py

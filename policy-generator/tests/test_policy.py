@@ -59,3 +59,40 @@ def test_negative_amount_raises():
             "amount": -50,
             "timestamp": 1234567,
         }])
+
+
+def test_explain_and_calldata():
+    from kakoro_policy.generator import explain, to_apply_policy_calldata
+    payee = "0x" + "1" * 40
+    tx_log = [{"payee": payee, "amount": 1_000_000, "timestamp": 1000}]
+    policy = score_transactions(tx_log, session_key="0x" + "2" * 40)
+
+    # 1. Test explain
+    explanation = explain(policy)
+    assert "KAKOROPAY SESSION POLICY EXPLANATION" in explanation
+    assert "Per-Call Maximum" in explanation
+    assert payee in explanation
+
+    # 2. Test calldata generation
+    calldata = to_apply_policy_calldata(policy)
+    assert isinstance(calldata, str)
+    assert calldata.startswith("0x")
+    assert len(calldata) > 100
+
+
+def test_eval_harness():
+    from kakoro_policy.eval_harness import generate_benchmark_traces, evaluate_policy
+    payee = "0x" + "1" * 40
+    token = "0x456569838f1d43009A91ebA4263147Afd7233483"
+
+    benign, attacks = generate_benchmark_traces(payee, token)
+    policy = score_transactions(benign, session_key="0x" + "2" * 40, default_token=token)
+
+    result = evaluate_policy(policy, benign, attacks)
+    assert result.total_benign == len(benign)
+    assert result.total_attacks == len(attacks)
+    assert result.false_block_rate == 0.0  # None of the normal benign payments should be blocked
+    assert result.attack_block_rate > 0.90  # >90% of attacks blocked
+    assert "OverPerCallCap" in result.reasons
+    assert "PayeeNotAllowed" in result.reasons
+

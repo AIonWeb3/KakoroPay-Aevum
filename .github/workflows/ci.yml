@@ -1,0 +1,53 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-python:
+    name: Python Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio web3 eth-account fastapi httpx pydantic ruff
+
+      - name: Run Ruff Linter
+        run: |
+          ruff check . --exit-zero
+
+      - name: Run Pytest Test Suite
+        env:
+          PYTHONPATH: ".:sdk:policy-generator/src:mcp-server/src:seller:payer:relayer:console:demo"
+        run: |
+          pytest -v
+
+  test-contracts:
+    name: Foundry Solidity Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Run Foundry Unit & Invariant Tests
+        working-directory: contracts
+        run: |
+          forge build
+          forge test -vv

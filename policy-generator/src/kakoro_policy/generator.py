@@ -135,6 +135,96 @@ def score_transactions(
     )
 
 
+def explain(spec: SessionPolicySpec, decimals: int = 6, token_symbol: str = "tUSD8") -> str:
+    """
+    Generates a plain-language summary of the policy for human owner review and approval.
+    """
+    scale = 10**decimals
+    per_call_formatted = spec.per_call_cap / scale
+    window_formatted = spec.window_cap / scale
+    thresh_formatted = spec.approval_threshold / scale
+
+    expiry_dt = datetime.fromtimestamp(spec.expiry, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    window_hours = spec.window_seconds / 3600.0
+
+    lines = [
+        "============================================================",
+        "  KAKOROPAY SESSION POLICY EXPLANATION (Human Approval View)",
+        "============================================================",
+        f"Session Key:          {spec.session_key}",
+        f"Valid Until:          {expiry_dt} (Unix {spec.expiry})",
+        "",
+        "SPEND CONTROLS:",
+        f"• Per-Call Maximum:   {per_call_formatted:,.2f} {token_symbol}",
+        f"  └─ Hard cap: Any single transaction exceeding this will be blocked on-chain.",
+        "",
+        f"• Rolling Window Cap: {window_formatted:,.2f} {token_symbol} per {window_hours:.1f} hour(s) ({spec.window_seconds}s)",
+        f"  └─ Velocity limiter: Spend automatically resets after {spec.window_seconds}s of inactivity.",
+        "",
+        f"• Call Rate Limit:    Max {spec.max_calls_per_window} payment(s) per {window_hours:.1f} hour(s)",
+        f"  └─ Looping guard: Throttles runaway loops or prompt-injection spam.",
+        "",
+        f"• Approval Threshold: {thresh_formatted:,.2f} {token_symbol}",
+        f"  └─ Dual-control: Any call between {thresh_formatted:,.2f} and {per_call_formatted:,.2f} requires Owner co-signature.",
+        "",
+        f"• Payee Verification: {'REQUIRED via PayeeRegistry' if spec.require_verified_payee else 'OPTIONAL'}",
+        "",
+        f"ALLOWLISTED PAYEES ({len(spec.allowed_payees)}):",
+    ]
+    for p in spec.allowed_payees:
+        lines.append(f"  - {p}")
+
+    lines.append(f"\nALLOWLISTED TOKENS ({len(spec.allowed_tokens)}):")
+    for t in spec.allowed_tokens:
+        lines.append(f"  - {t} ({token_symbol})")
+
+    lines.append("============================================================")
+    return "\n".join(lines)
+
+
+def to_apply_policy_calldata(
+    spec: SessionPolicySpec,
+    add_tokens: Optional[List[str]] = None,
+    remove_tokens: Optional[List[str]] = None,
+    add_payees: Optional[List[str]] = None,
+    remove_payees: Optional[List[str]] = None,
+) -> str:
+    """
+    Encodes the policy into ABI-encoded calldata for KakoroAccount.applyPolicy(...).
+    """
+    from kakoro_sdk.abi import KAKORO_ACCOUNT_ABI
+    w3 = Web3()
+    contract = w3.eth.contract(abi=KAKORO_ACCOUNT_ABI)
+
+    policy_tuple = (
+        int(spec.expiry),
+        int(spec.per_call_cap),
+        int(spec.window_cap),
+        int(spec.window_seconds),
+        int(spec.max_calls_per_window),
+        int(spec.approval_threshold),
+        bool(spec.require_verified_payee),
+    )
+
+    norm_add_tokens = [Web3.to_checksum_address(t) for t in (add_tokens or spec.allowed_tokens)]
+    norm_remove_tokens = [Web3.to_checksum_address(t) for t in (remove_tokens or [])]
+    norm_add_payees = [Web3.to_checksum_address(p) for p in (add_payees or spec.allowed_payees)]
+    norm_remove_payees = [Web3.to_checksum_address(p) for p in (remove_payees or [])]
+
+    calldata = contract.encode_abi(
+        "applyPolicy",
+        args=[
+            Web3.to_checksum_address(spec.session_key),
+            policy_tuple,
+            norm_add_tokens,
+            norm_remove_tokens,
+            norm_add_payees,
+            norm_remove_payees,
+        ],
+    )
+    return calldata
+
+
 def main():
     parser = argparse.ArgumentParser(description="KakoroPay EVM Policy Generator")
     parser.add_argument("logfile", nargs="?", help="Path to JSON transaction log")
